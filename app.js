@@ -2,6 +2,7 @@ const {google} = require('googleapis');
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
 const axios = require('axios').default;
 const FormData = require('form-data');
+const {createClientName} = require('./clientName.js')
 //Rob and nick are both commercial opps folder
 //check chuck, ellis and michael, 'resource key' in url can't tell what the folder id is
 const salesmanFolders = {
@@ -169,125 +170,7 @@ async function recursive(driveService, startSearch, rootFolder, clientName) {
     } 
 }
 
-function setNameFinal(clientName) {
-    let clientNameLow = clientName.toLowerCase();
-    if(clientNameLow.includes('- expansion') || clientNameLow.includes('- exp')) {
-        return setNameExpansionEnd(clientName);
-    } else if(clientNameLow.includes('expansion -') || clientNameLow.includes('exp -')) {
-        return setNameExpansionBeginning(clientName)
-    } else if(clientNameLow.includes(' expansion') || clientNameLow.includes(' exp')) {
-        return setNameExpansionEndNoDash(clientName);
-    } else if(clientNameLow.includes('expansion ') || clientNameLow.includes('exp ')) {
-        return setNameExpansionBeginningNoDash(clientName);
-    } else if(clientNameLow.includes('- storage')) {
-        return setNameDashStorage(clientName);
-    } else if(clientNameLow.includes(' storage')) {
-        return setNameStorage(clientName);
-    } else if(clientNameLow.includes('storage -')) {
-        return setNameStorageBeginningDash(clientName);
-    } else if(clientNameLow.includes('storage')) {
-        return setNameStorageBeginning(clientName);   
-    } else {
-        return setName(clientName);
-    }
-}
-function setName(clientName) {
-    const clientNameArray = clientName.split(' ');
-    let clientNameNew = `${clientNameArray[clientNameArray.length - 1]},`;
-    for(let i=0; i < (clientNameArray.length - 1); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    return clientNameNew;
-}
-function setNameExpansionEnd(clientName) {
-    const clientNameArray = clientName.split(' ');
-    let clientNameNew = `${clientNameArray[clientNameArray.length - 3]},`;
-    for(let i=0; i < (clientNameArray.length - 3); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    clientNameNew += ' - Expansion';
-    return clientNameNew;
-}
-function setNameExpansionBeginning(clientName) {
-    const clientNameArray = clientName.split(' ');
-    let clientNameNew = `${clientNameArray[clientNameArray.length - 1]},`
-    for(let i=2; i < (clientNameArray.length - 1); i++){
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    clientNameNew += ' - Expansion';
-    return clientNameNew;
-}
-function setNameExpansionEndNoDash(clientName){
-    const clientNameArray = clientName.split(' ');
-    let clientNameNew = `${clientNameArray[clientNameArray.length - 2]},`;
-    for(let i=0; i < (clientNameArray.length - 2); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    clientNameNew += ' - Expansion';
-    return clientNameNew;
 
-}
-function setNameExpansionBeginningNoDash(clientName) {
-    const clientNameArray = clientName.split(' ');
-    let clientNameNew = `${clientNameArray[clientNameArray.length - 1]},`
-    for(let i=1; i < (clientNameArray.length - 1); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    clientNameNew += ' - Expansion';
-    return clientNameNew;
-}
-function clientNameSetWithoutExpansion(clientName) {
-    let clientNameArray = clientName.split(' ');
-    let clientNameNew = clientNameArray[0];
-    for(i=1; i < (clientNameArray.length-2); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    return clientNameNew;
-}
-function setNameStorage(clientName) {
-    const clientNameArray = clientName.split(' ');
-    let clientNameNew = `${clientNameArray[clientNameArray.length - 2]},`;
-    for(let i=0; i < (clientNameArray.length - 2); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    clientNameNew += ' - Storage';
-    return clientNameNew;
-}
-function setNameDashStorage(clientName) {
-    const clientNameArray = clientName.split(' ');
-    let clientNameNew = `${clientNameArray[clientNameArray.length - 3]},`;
-    for(i=0; i < (clientNameArray.length - 3); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    clientNameNew += ' - Storage';
-    return clientNameNew;
-}
-function setNameStorageBeginning(clientName) {
-    const clientNameArray = clientName.split(' ');
-    let clientNameNew = `${clientNameArray[clientNameArray.length - 1]},`
-    for(let i=1; i < (clientNameArray.length - 1); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    clientNameNew += ' - Storage';
-    return clientNameNew;
-}
-function setNameStorageBeginningDash(clientName) {
-    const clientNameArray = clientName.split(' ');
-    let clientNameNew = `${clientNameArray[clientNameArray.length - 1]},`
-    for(let i=2; i < (clientNameArray.length - 1); i++){
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    clientNameNew += ' - Storage';
-    return clientNameNew;
-}
-function clientNameSetWithoutStorage(clientName) {
-    let clientNameArray = clientName.split(' ');
-    let clientNameNew = clientNameArray[0];
-    for(i=1; i < (clientNameArray.length-2); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    return clientNameNew;
-}
 
 
 
@@ -319,14 +202,13 @@ exports.main = async (req, res) => {
 
         let clientName;
         if(!commercial){
-            clientName = setNameFinal(stringName); 
+            clientName = createClientName(stringName); 
         } else {
             clientName = stringName;
             salesman = salesmanFolders.Commercial
             START_SEARCH = changeStartSearchCommercial
         }
         const google = await authorize();
-        console.log('NOW QUERRY FOR FOLDER INITIAL')
         let folderQueryResult = await searchName(google, salesman, clientName);
         
         if(folderQueryResult.files.length <= 0) {
