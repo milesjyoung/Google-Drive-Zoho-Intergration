@@ -170,8 +170,23 @@ async function recursive(driveService, startSearch, rootFolder, clientName) {
     } 
 }
 
-
-
+//for querying for existing folders
+function clientNameSetWithoutExpansion(clientName) {
+    let clientNameArray = clientName.split(' ');
+    let clientNameNew = clientNameArray[0];
+    for(i=1; i < (clientNameArray.length-2); i++) {
+        clientNameNew += ` ${clientNameArray[i]}`;
+    }
+    return clientNameNew;
+}
+function clientNameSetWithoutStorage(clientName) {
+    let clientNameArray = clientName.split(' ');
+    let clientNameNew = clientNameArray[0];
+    for(i=1; i < (clientNameArray.length-2); i++) {
+        clientNameNew += ` ${clientNameArray[i]}`;
+    }
+    return clientNameNew;
+}
 
 
 
