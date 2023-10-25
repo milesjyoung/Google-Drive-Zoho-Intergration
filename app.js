@@ -3,51 +3,27 @@ const SCOPES = ['https://www.googleapis.com/auth/drive'];
 const axios = require('axios').default;
 const FormData = require('form-data');
 const {createClientName} = require('./clientName.js')
-//Rob and nick are both commercial opps folder
-//check chuck, ellis and michael, 'resource key' in url can't tell what the folder id is
+//this is the name:key of the folders where you will be creating the client folders
+//the ids should be the google drive folder ids of the folders
 const salesmanFolders = {
-    Chuck: '0B_1drI8OeaN0YVpOeGZSVW9yZTA',
-    Rob: '1K5_ZBotnIomaHlxGuc0QbwUKm1DyNIoL',
-    Ellis: '0BwvLujdXdtkRQzUtaG9LYlI2MzA',
-    Lindsey: '1P6QYkS553Eh8MfDAXeLoh-K1YtIexOIu',
-    Michael: '0Bw8XszLlsKV8V1dHXzk1anBqRUU',
-    Michelle: '1uF7xv8G6R22MzD8Q1F8A49y6S4CosE96',
-    Miles: '1sf8RJQwfdMX0NqT7MkivBUafRwFgcN2u',
-    Nick: '1otvNaoDquTJcetrSD72YSDgNcRsQC7yi',
-    Sierra: '1CBqCkMdMWjKYICFElSji9uy2AACvCv0d',
-    Travis: '1qCfjDG0s8_sLrJZXQ52rJT3qcBnWxzvc',
-    Commercial: '1K5_ZBotnIomaHlxGuc0QbwUKm1DyNIoL'
+    person1: 'id123',
+    person2: 'id234',
+    person3: 'id345'
 };
-//START_SEARCH needs to be the make a copy client folder will work regardless of content changes
-let START_SEARCH = '0Bw8XszLlsKV8WDN3NXZISzkwajA';
+//START_SEARCH this needs to be the google drive id of root of the folder tree you want to copy, i.e. your template
+let START_SEARCH = 'id123';
 
-let changeStartSearchCommercial = '1G6bW3i5Q9_b-twK3kxYoETZMX8rSGqSf';
+//for this project this was an alternative template
+let changeStartSearchCommercial = 'id345';
 
-
+//will set salesman from the webhook info
 function getSalesmanFolder(salesman) {
-    if(salesman.includes('Sierra')) {
-        return salesmanFolders.Sierra;
-    } else if(salesman.includes('Ellis')) {
-        return salesmanFolders.Ellis;
-    } else if(salesman.includes('Travis')) {
-        return salesmanFolders.Travis;
-    } else if(salesman.includes('Lindsey')) {
-        return salesmanFolders.Lindsey;
-    } else if(salesman.includes('Michelle')) {
-        return salesmanFolders.Michelle;
-    } else if(salesman.includes('Nick')) {
-        return salesmanFolders.Nick;
-    } else if(salesman.includes('Michael')) {
-        return salesmanFolders.Michael;
-    } else if(salesman.includes('Rob')) {
-        START_SEARCH = changeStartSearchCommercial;
-        return salesmanFolders.Rob;
-    } else if(salesman.includes('Chuck')) {
-        return salesmanFolders.Chuck;
-    } else if(salesman.includes('Miles')) {
-        return salesmanFolders.Miles;
+    if(salesman.includes('person1')) {
+        return salesmanFolders.person1;
+    } else if(salesman.includes('person2')) {
+        return salesmanFolders.person2;
     } else {
-        return salesmanFolders.Miles;
+        return salesmanFolders.person3;
     }
 
 }
@@ -189,14 +165,14 @@ function clientNameSetWithoutStorage(clientName) {
 }
 
 
+//here we update zoho resource via a standalone api in zoho to add a link to the newly created google drive folder in your corresponding zoho module
+//update with your new zoho API link
 
-//update with new zoho API link
-//Double check the beginning of the link sent back as the drive folder link
 async function postData(zohoLeadID, root) {
     var form = new FormData();
     form.append("arguments", JSON.stringify({"ID":`${zohoLeadID}`, "folderNumber": `https://drive.google.com/drive/folders/${root}`}));
     const axiosRes = await axios.post(
-        'https://www.zohoapis.com/crm/v2/functions/npaautomation/actions/execute?auth_type=apikey&zapikey=1003.f956ca6251843e8928f8b65fc626d49f.90086e4d1fb79e66cd8c521df80ffe94', form, {headers: form.getHeaders()}
+        'this is the link for zoho api', form, {headers: form.getHeaders()}
     );
 }
 
