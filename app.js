@@ -1,269 +1,121 @@
 const {google} = require('googleapis');
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
-const axios = require('axios').default;
-const FormData = require('form-data');
 const {createClientName} = require('./clientName.js')
-//this is the name:key of the folders where you will be creating the client folders
-//the ids should be the google drive folder ids of the folders
-const salesmanFolders = {
-    person1: 'id123',
-    person2: 'id234',
-    person3: 'id345'
-};
-//START_SEARCH this needs to be the google drive id of root of the folder tree you want to copy, i.e. your template
-let START_SEARCH = 'id123';
+const salesFolders = require('./salesFolders.js')
 
-//for this project this was an alternative template
-let changeStartSearchCommercial = 'id345';
+const {
+    recursive,
+    searchName,
+    createRoot,
+    postData,
+    clientNameSetWithoutExpansion,
+    clientNameSetWithoutStorage
+} = require("./lib.js")
 
-//will set salesman from the webhook info
-function getSalesmanFolder(salesman) {
-    if(salesman.includes('person1')) {
-        return salesmanFolders.person1;
-    } else if(salesman.includes('person2')) {
-        return salesmanFolders.person2;
-    } else {
-        return salesmanFolders.person3;
-    }
+const {computeHash} = require("./decrypt.js")
 
-}
-
-function authorize() {
-    const auth = new google.auth.GoogleAuth({
-        keyFile: 'creds.json',
-        scopes: SCOPES
-    })
-    return google.drive({version: 'v3', auth})
-}
-
-function search(driveService, parentFolder) {
-    return new Promise((resolve, reject) => {
-        driveService.files.list({
-            pageSize: 20,
-            q: `"${parentFolder}" in parents and trashed = false`, 
-            fields: 'files(id, name, mimeType)'
-        }).then(({data}) => resolve(data))
-        .catch(err => reject(err))
-    })
-}
-
-function searchName(driveService, parentFolder, clientName) {
-    return new Promise((resolve, reject) => {
-        driveService.files.list({
-            pageSize: 20,
-            q: `"${parentFolder}" in parents and name="${clientName}"and mimeType="application/vnd.google-apps.folder" and trashed = false`, 
-            fields: 'files(id, name, mimeType)'
-        }).then(({data}) => resolve(data))
-        .catch(err => reject(err))
-    })
-}
-
-function searchFoundFolder(driveService, parentFolder) {
-    return new Promise((resolve, reject) => {
-        driveService.files.list({
-            pageSize: 20,
-            q: `"${parentFolder}" in parents and mimeType="application/vnd.google-apps.folder" and trashed = false`, 
-            fields: 'files(id, name, mimeType)'
-        }).then(({data}) => resolve(data))
-        .catch(err => reject(err))
-    })
-}
-
-function createRoot(driveService, CLIENT_NAME, NEW_FOLDER_LOCATION) {
-    let fileMetadata = {
-        'name': CLIENT_NAME,
-        'mimeType': 'application/vnd.google-apps.folder',
-        'parents': [NEW_FOLDER_LOCATION]
-    }
-    return new Promise((resolve, reject) => {
-        const file = driveService.files.create({
-            resource: fileMetadata,
-            fields: 'id'
-        }, function(err, file) {
-            if(err) {
-                reject(err);
-            } else {
-                resolve(file.data.id);
-            }
-        })
-    })
-}
-
-function copy(driveService, copyContentId, contentNewName, root) {
-    
-    let fileMetadata = {
-        'name': contentNewName,
-        'parents': [root]
-    };
-    return new Promise((resolve, reject) => {
-        const file = driveService.files.copy({
-            'fileId': copyContentId,
-            'resource': fileMetadata
-        }, function(err, file) {
-            if(err) {
-                reject(err);
-            } else {
-                resolve(file.data.id);
-            }
-        })
-    })
-}
-
-function create(driveService, contentNewName, root) {
-    let fileMetadata = {
-        'name': contentNewName,
-        'mimeType': 'application/vnd.google-apps.folder',
-        'parents': [root]
-    };
-    return new Promise((resolve, reject) => {
-        const file = driveService.files.create({
-            resource: fileMetadata,
-            fields: 'id'
-        }, function(err, file) {
-            if(err) {
-                reject(err);
-            } else {
-                resolve(file.data.id);
-            }
-        })
-    })
-
-}
-
-async function recursive(driveService, startSearch, rootFolder, clientName) {
-    let children = await search(driveService, startSearch);
-    if(children.files.length > 0) {
-        for(let element of children.files) {
-            if(element.mimeType === 'application/vnd.google-apps.folder') {
-                let name = element.name.replace('Last, First', clientName);
-                let folderID = await create(driveService, name, rootFolder);
-                await recursive(driveService, element.id, folderID, clientName);
-            } else {
-            let name = element.name.replace('Last, First', clientName);
-            let fileID = await copy(driveService, element.id, name, rootFolder);
-            }
-        }
-    } 
-}
-
-//for querying for existing folders
-function clientNameSetWithoutExpansion(clientName) {
-    let clientNameArray = clientName.split(' ');
-    let clientNameNew = clientNameArray[0];
-    for(i=1; i < (clientNameArray.length-2); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    return clientNameNew;
-}
-function clientNameSetWithoutStorage(clientName) {
-    let clientNameArray = clientName.split(' ');
-    let clientNameNew = clientNameArray[0];
-    for(i=1; i < (clientNameArray.length-2); i++) {
-        clientNameNew += ` ${clientNameArray[i]}`;
-    }
-    return clientNameNew;
-}
-
-
-//here we update zoho resource via a standalone api in zoho to add a link to the newly created google drive folder in your corresponding zoho module
-//update with your new zoho API link
-
-async function postData(zohoLeadID, root) {
-    var form = new FormData();
-    form.append("arguments", JSON.stringify({"ID":`${zohoLeadID}`, "folderNumber": `https://drive.google.com/drive/folders/${root}`}));
-    const axiosRes = await axios.post(
-        'this is the link for zoho api', form, {headers: form.getHeaders()}
-    );
-}
+let TEMPLATE_FOLDER = '15IkTy4DcqzEPntE87g6uY0yvPxIRFkjX';
+let TEMPLATE_FOLDER_COMMERCIAL = 'update me!';
+const KEY_FILE = "./key.json"
 
 exports.main = async (req, res) => {
-
     try {
-
+        let signature = req.headers['signature']?.split(' ')[1];
         const params = new URLSearchParams(req.body);
-        let zohoLeadID = params.get('zohoLeadID');
-        let salesmanName = params.get('salesman');
-        let stringName = params.get('client');
-        let commercialParam = params.get('type').toUpperCase()
-        let commercial = commercialParam.includes('COMMERCIAL') ? true : false
-        console.log(`typestring: ${commercialParam}, commercial value: ${commercial}`)
-
-
-        let salesman = getSalesmanFolder(salesmanName);
-
+        let zohoLeadID = params.get('zohoID');
+        let salesRepName = params.get('salespersonName');
+        let stringName = params.get('clientName');
+        let commercialParam = params.get('type')
+        let commercial = commercialParam.toUpperCase().includes('COMMERCIAL') ? true : false
+        // verify signature
+        if(!signature) {
+            throw new Error("No signature provided in request")
+        }
+        const concat = zohoLeadID + "|" + salesRepName + "|" + stringName + "|" + commercialParam
+        const hash = computeHash(concat)
+        if(signature !== hash) {
+            throw new Error("Incorrect signature provided")
+        }
+        // setting location of copied folder
+        let salesFolder = salesFolders[salesRepName]["folder"] || salesFolders["default"]["folder"]
+        let salesRepEmail = salesFolders[salesRepName]["email"] || salesFolders["default"]["email"]
+        // setting the name to replace target file names with
         let clientName;
-        if(!commercial){
-            clientName = createClientName(stringName); 
+        if (!commercial) {
+            clientName = createClientName(stringName);
         } else {
             clientName = stringName;
-            salesman = salesmanFolders.Commercial
-            START_SEARCH = changeStartSearchCommercial
+            salesFolder = salesFolders["Commercial"]["folder"]
+            TEMPLATE_FOLDER = TEMPLATE_FOLDER_COMMERCIAL
         }
-        const google = await authorize();
-        let folderQueryResult = await searchName(google, salesman, clientName);
         
-        if(folderQueryResult.files.length <= 0) {
-            if(clientName.includes('- Expansion')) {
-                console.log('we see it includes expansion');
-                let clientNameWithout = clientNameSetWithoutExpansion(clientName);
-                let folderQueryExpansion = await searchName(google, salesman, clientNameWithout);
-                console.log(clientNameWithout);
-                console.log(folderQueryExpansion.files);
-                if(folderQueryExpansion.files.length <= 0) {
-                    let root = await createRoot(google, clientName, salesman);
-                    postData(zohoLeadID, root);
-                    await recursive(google, START_SEARCH, root, clientName);
+        // Create a JWT client using the extracted credentials
+        const auth = new google.auth.JWT({
+            keyFile: KEY_FILE,
+            scopes: SCOPES,
+            subject: salesRepEmail,
+        });
+        const driveClient = google.drive({ version: "v3", auth })
+
+        let folderQueryResult = await searchName(driveClient, salesFolder, clientName);
+        if(!folderQueryResult) {
+            throw new Error("query for a folder threw error")
+        }
+        if (folderQueryResult.files.length <= 0) {
+            if (clientName.includes('- Expansion') || clientName.includes('- Storage')) {
+                let clientNameWithout;
+                if(clientName.includes('- Expansion')) {
+                    clientNameWithout = clientNameSetWithoutExpansion(clientName);
                 } else {
-                    let finalSearch = await searchName(google, folderQueryExpansion.files[0].id, clientName);
-                    if(finalSearch.files.length <= 0) {
-                        let root = await createRoot(google, clientName, folderQueryExpansion.files[0].id);
-                        postData(zohoLeadID, root);
-                        await recursive(google, START_SEARCH, root, clientName);
-                    } else {
-                        
-                    } 
+                    clientNameWithout = clientNameSetWithoutStorage(clientName);
                 }
-            } else if(clientName.includes('- Storage')){
-                let clientNameWithout = clientNameSetWithoutStorage(clientName);
-                let folderQueryStorage = await searchName(google, salesman, clientNameWithout);
-            
-                if(folderQueryStorage.files.length <= 0) {
-                    let root = await createRoot(google, clientName, salesman);
-                    postData(zohoLeadID, root);
-                    await recursive(google, START_SEARCH, root, clientName);
+                let folderQuery = await searchName(driveClient, salesFolder, clientNameWithout);
+                if(!folderQuery) {
+                    throw new Error("folder query expansion threw error")
+                }
+                if (folderQuery.files.length <= 0) {
+                    let root = await createRoot(driveClient, clientName, salesFolder);
+                    if(!root) {
+                        throw new Error("error creating root")
+                    }
+                    postData(zohoLeadID, root, clientName);
+                    await recursive(driveClient, TEMPLATE_FOLDER, root, clientName);
                 } else {
-                    let finalSearch = await searchName(google, folderQueryStorage.files[0].id, clientName);
-                    if(finalSearch.files.length <= 0) {
-                        let root = await createRoot(google, clientName, folderQueryStorage.files[0].id);
-                        postData(zohoLeadID, root);
-                        await recursive(google, START_SEARCH, root, clientName);
-                    } else {
-                        
+                    let finalSearch = await searchName(driveClient, folderQuery.files[0].id, clientName);
+                    if(!finalSearch) {
+                        throw new Error("Error in final search")
+                    }
+                    if (finalSearch.files.length <= 0) {
+                        let root = await createRoot(driveClient, clientName, folderQuery.files[0].id);
+                        postData(zohoLeadID, root, clientName);
+                        await recursive(driveClient, TEMPLATE_FOLDER, root, clientName);
                     }
                 }
             } else {
-                let root = await createRoot(google, clientName, salesman);
-                postData(zohoLeadID, root);
-                await recursive(google, START_SEARCH, root, clientName);
+                let root = await createRoot(driveClient, clientName, salesFolder);
+                if(!root) {
+                    throw new Error("Error creating basic route")
+                }
+                postData(zohoLeadID, root, clientName);
+                await recursive(driveClient, TEMPLATE_FOLDER, root, clientName);
             }
 
         } else {
-            let folderStatus = await searchFoundFolder(google, folderQueryResult.files[0].id);
-            if(folderStatus.files.length <= 0) {
+            let folderStatus = await searchFoundFolder(driveClient, folderQueryResult.files[0].id);
+            if (folderStatus.files.length <= 0) {
                 let root = folderQueryResult.files[0].id;
-                postData(zohoLeadID, root);
-                await recursive(google, START_SEARCH, root, clientName);
+                postData(zohoLeadID, root, clientName);
+                await recursive(driveClient, TEMPLATE_FOLDER, root, clientName);
             } else {
                 let root = folderQueryResult.files[0].id;
-                postData(zohoLeadID, root);
+                postData(zohoLeadID, root, clientName);
             }
         }
-      
         res.status(200).send('Success');
 
     } catch (err) {
-      console.log(err);
-      res.status(500).send('Failed...');
+        console.log(err);
+        res.status(500).send('Failed...');
     }
 
 };

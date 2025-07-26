@@ -12,6 +12,7 @@
   "dependencies": {
     "axios": "^0.24.0",
     "form-data": "^4.0.0",
+    "google-auth-library": "^9.15.0",
     "googleapis": "^92.0.0"
   }
 }

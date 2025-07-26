@@ -1,0 +1,20 @@
+void automation.test01(String zohoID, String salespersonName, String clientName, String type)
+{
+// prepare to sign hmac
+concatenatedValues = zohoID + "|" + salespersonName + "|" + clientName + "|" + type;
+hmacSignature = zoho.encryption.hmacsha256(zoho.crm.getOrgVariable("webhook01"),concatenatedValues);
+// prepare request body
+paramMap = Map();
+paramMap.put("zohoID",zohoID);
+paramMap.put("salespersonName",salespersonName);
+paramMap.put("clientName",clientName);
+paramMap.put("type",type);
+hook = invokeurl
+[
+	url :"apigatewayUrl?key=gateway_api_key_value"
+	type :POST
+	parameters:paramMap
+	headers:{"signature":"HMAC " + hmacSignature}
+];
+return;
+}
