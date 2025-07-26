@@ -14,7 +14,7 @@ const {
 
 const {computeHash} = require("./decrypt.js")
 
-let TEMPLATE_FOLDER = '15IkTy4DcqzEPntE87g6uY0yvPxIRFkjX';
+let TEMPLATE_FOLDER = 'update me!';
 let TEMPLATE_FOLDER_COMMERCIAL = 'update me!';
 const KEY_FILE = "./key.json"
 

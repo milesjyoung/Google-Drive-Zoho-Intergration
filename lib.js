@@ -132,7 +132,7 @@ async function postData(zohoLeadID, root, clientFolderName) {
     var form = new FormData();
     form.append("arguments", JSON.stringify({ "ID": `${zohoLeadID}`, "folderNumber": `https://drive.google.com/drive/folders/${root}`, "clientFolderName": clientFolderName }));
     const axiosRes = await axios.post(
-        'https://www.zohoapis.com/crm/v2/functions/npaautomation/actions/execute?auth_type=apikey&zapikey=1003.f956ca6251843e8928f8b65fc626d49f.90086e4d1fb79e66cd8c521df80ffe94', form, { headers: form.getHeaders() }
+        'https://www.zohoapis.com/crm/v2/functions/npaautomation/actions/execute?auth_type=apikey&zapikey=key', form, { headers: form.getHeaders() }
     );
 }
 
